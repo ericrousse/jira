@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 
 ATL_GENERATE_PASSWORD_SCRIPT="print(com.atlassian.security.password.DefaultPasswordEncoder.getDefaultInstance().encodePassword(arguments[0]));"
 ATL_GENERATE_SERVER_ID_SCRIPT="print((new com.atlassian.license.DefaultSIDManager()).generateSID());"
@@ -7,7 +6,6 @@ ATL_GENERATE_SERVER_ID_SCRIPT="print((new com.atlassian.license.DefaultSIDManage
 ATL_TEMP_DIR="/tmp"
 ATL_JIRA_VARFILE="${ATL_TEMP_DIR}/jira.varfile"
 ATL_MSSQL_DRIVER_URL="https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/7.2.1.jre8/mssql-jdbc-7.2.1.jre8.jar"
-ATL_POSTGRES_DRIVER_URL="https://repo1.maven.org/maven2/org/postgresql/postgresql/42.2.6/postgresql-42.2.6.jar"
 
 
 function atl_log {
@@ -55,37 +53,32 @@ function preserve_installer {
 }
 
 function download_installer {
+  local BASE_URL=https://my.atlassian.com/download/feeds/current
 
-  local jira_version=${ATL_JIRA_PRODUCT_VERSION}
-  echo "${ATL_JIRA_PRODUCT_VERSION}" > version
-  atl_log download_installer "Going to use ${ATL_JIRA_PRODUCT} with version: ${ATL_JIRA_PRODUCT_VERSION}"
+  # ATL_JIRA_PRODUCT can only either be "jira-software" or "servicedesk"
+  [ ${ATL_JIRA_PRODUCT} = 'jira-software' ] && SOFTWARE_VERSION_URL="${BASE_URL}/jira-software.json" || SOFTWARE_VERSION_URL="${BASE_URL}/jira-servicedesk.json"
 
-  if [[ ${ATL_JIRA_PRODUCT_VERSION} == 'latest' ]]
+ if [ ! -n "${ATL_JIRA_CUSTOM_DOWNLOAD_URL}" ]
   then
-    # Get latest version from the special /latest url.
-    local jira_version_file_url="${ATL_JIRA_RELEASES_BASE_URL}/${ATL_JIRA_PRODUCT}/latest"
-    atl_log download_installer "Downloading installer description from ${jira_version_file_url}"
-
-    if ! curl -L -f --silent "${jira_version_file_url}" \
-       -o "version" 2>&1
-    then
-      atl_log download_installer "Could not download installer description from ${jira_version_file_url}"
-      exit 1
+    log "Will use version: ${ATL_JIRA_PRODUCT_VERSION} but first retrieving latest jira version info from Atlassian..."
+    LATEST_INFO=$(curl -L -f --silent ${SOFTWARE_VERSION_URL} | sed 's/^downloads(//g' | sed 's/)$//g')
+    if [ "$?" -ne "0" ]; then
+      error "Could not get latest info installer description from ${SOFTWARE_VERSION_URL}"
     fi
 
-    local jira_version=$(cat version)
+    LATEST_VERSION=$(echo ${LATEST_INFO} | jq '.[] | select(.platform == "Unix") |  select(.zipUrl|test("x64")) | .version' | sed 's/"//g' | sort -nr | head -n1)
+    LATEST_SOFTWARE_VERSION_URL=$(echo ${LATEST_INFO} | jq '.[] | select(.platform == "Unix") |  select(.zipUrl|test("x64")) | .zipUrl' | sed 's/"//g' | sort -nr | head -n1)
+    log "Latest jira info: $LATEST_VERSION and download URL: $LATEST_SOFTWARE_VERSION_URL"
   fi
 
+  [ ${ATL_JIRA_PRODUCT_VERSION} = 'latest' ] &&  echo -n "${LATEST_VERSION}" > version || echo -n "${ATL_JIRA_PRODUCT_VERSION}" > version
+  local jira_version=$(cat version)
+  [ -n "${ATL_JIRA_CUSTOM_DOWNLOAD_URL}" ] && local jira_installer_url="${ATL_JIRA_CUSTOM_DOWNLOAD_URL}/atlassian-jira-software-${ATL_JIRA_PRODUCT_VERSION}-x64.bin"  || local jira_installer_url=$(echo ${LATEST_SOFTWARE_VERSION_URL} | sed "s/${LATEST_VERSION}/${jira_version}/g")
+  log "Downloading ${ATL_JIRA_PRODUCT} installer from ${jira_installer_url}"
 
-  local jira_installer="atlassian-${ATL_JIRA_PRODUCT}-${jira_version}-x64.bin"
-  [ -n "${ATL_JIRA_CUSTOM_DOWNLOAD_URL}" ] && local jira_installer_url="${ATL_JIRA_CUSTOM_DOWNLOAD_URL}/${jira_installer}" || local jira_installer_url="${ATL_JIRA_RELEASES_BASE_URL}/${ATL_JIRA_PRODUCT}/${jira_installer}"
-  atl_log download_installer "Downloading ${ATL_JIRA_PRODUCT} installer from ${jira_installer_url}"
-
-  if ! curl -L -f --silent "${jira_installer_url}" \
-       -o "installer" 2>&1
+  if ! curl -L -f --silent "${jira_installer_url}" -o "installer" 2>&1
   then
-    atl_log download_installer "Could not download ${ATL_JIRA_PRODUCT} installer from ${jira_installer_url}"
-    exit 1
+    error "Could not download ${ATL_JIRA_PRODUCT} installer from ${jira_installer_url}"
   fi
 }
 
@@ -461,11 +454,11 @@ function perform_install {
   atl_log perform_install "${ATL_JIRA_PDORUCT} installation completed"
 }
 
-# Still need to install Postgres/MSSQL jars for prepopulation of DB in prepare script.
+# Still need to install MSSQL jars for prepopulation of DB in prepare script.
 function install_jdbc_drivers {
   local install_location="${1:-${ATL_JIRA_INSTALL_DIR}/lib}"
 
-  for jarURL in $(echo $ATL_MSSQL_DRIVER_URL $ATL_POSTGRES_DRIVER_URL)
+  for jarURL in $(echo $ATL_MSSQL_DRIVER_URL )
   do
      atl_log install_jdbc_drivers "Downloading JDBC driver from ${jarURL}"
      curl -O "${jarURL}"
@@ -628,10 +621,6 @@ function configure_jira {
   configure_cluster
   atl_log configure_jira "Done configuring cluster!"
 
-  atl_log configure_jira "Configuring Postgres SSL..."
-  install_postgres_cert_if_needed
-  atl_log configure_jira "Done configuring Postgres SSL!"
-
   atl_log configure_jira "Configuring app insights..."
   install_appinsights
   atl_log configure_jira "Done app insights!"
@@ -669,15 +658,6 @@ function set_shared_home_permissions {
   chmod -R 774 ${ATL_JIRA_INSTALL_DIR}
 }
 
-# function install_oms_linux_agent {
-#   atl_log install_oms_linx_agent "Have OMS Workspace Key? |${OMS_WORKSPACE_ID}|"
-#   if [[ -n ${OMS_WORKSPACE_ID} ]]; then
-#     atl_log install_oms_linx_agent  "Installing OMS Linux Agent with workspace id: ${OMS_WORKSPACE_ID} and primary key: ${OMS_PRIMARY_KEY}"
-#     wget https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh && sh onboard_agent.sh -w "${OMS_WORKSPACE_ID}" -s "${OMS_PRIMARY_KEY}" -d opinsights.azure.com
-#     atl_log install_oms_linx_agent  "Finished installing OMS Linux Agent!"
-#   fi
-# }
-
 function enable_jira_service {
   atl_log enable_jira_service "Enabling Jira systemd service"
   mv jira.service /lib/systemd/system/jira.service
@@ -713,7 +693,6 @@ function prepare_install {
   preserve_installer
   hydrate_shared_config
   install_jdbc_drivers "`pwd`"
-  install_postgres_cert_if_needed
   if [ $DB_CREATE = 'true' ]
   then
      preloadDatabase
@@ -733,7 +712,6 @@ function install_jira {
   perform_install
   configure_jira
   remount_share
-  #install_oms_linux_agent
   enable_jira_service
   atl_log install_jira "Done installing JIRA! Starting..."
   disable_rhel_firewall
