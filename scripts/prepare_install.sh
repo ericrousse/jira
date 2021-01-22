@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 
 ATL_GENERATE_PASSWORD_SCRIPT="print(com.atlassian.security.password.DefaultPasswordEncoder.getDefaultInstance().encodePassword(arguments[0]));"
 ATL_GENERATE_SERVER_ID_SCRIPT="print((new com.atlassian.license.DefaultSIDManager()).generateSID());"
@@ -74,7 +75,7 @@ function download_installer {
 
     local jira_version=$(cat version)
   fi
-  
+
 
   local jira_installer="atlassian-${ATL_JIRA_PRODUCT}-${jira_version}-x64.bin"
   [ -n "${ATL_JIRA_CUSTOM_DOWNLOAD_URL}" ] && local jira_installer_url="${ATL_JIRA_CUSTOM_DOWNLOAD_URL}/${jira_installer}" || local jira_installer_url="${ATL_JIRA_RELEASES_BASE_URL}/${ATL_JIRA_PRODUCT}/${jira_installer}"
@@ -118,7 +119,7 @@ function install_core_dependencies {
   if [ "$?" -ne "0" ]; then
       error "Error downloading core dependencies!"
   fi
-  
+
   # nc/nmap-ncat needed on RHEL jumpbox for SSH proxying
   [ -n "${IS_REDHAT}" ] && pacapt install --noconfirm java-1.8.0-openjdk-headless nc || pacapt install --noconfirm openjdk-8-jre-headless
 }
@@ -172,40 +173,40 @@ function mount_share {
   creds_file="/etc/cifs.${ATL_JIRA_SHARED_HOME_NAME}"
   mount_options="vers=3.0,uid=${uid},gid=${gid},dir_mode=0750,file_mode=0640,credentials=${creds_file}"
   mount_share="//${STORAGE_ACCOUNT}.file.core.windows.net/${ATL_JIRA_SHARED_HOME_NAME}"
-  
+
   log "creating credentials at ${creds_file}"
   echo "username=${STORAGE_ACCOUNT}" >> ${creds_file}
   echo "password=${STORAGE_KEY}" >> ${creds_file}
   chmod 600 ${creds_file}
-  
+
   log "mounting share ${mount_share} at ${ATL_JIRA_SHARED_HOME} with options: ${mount_options}"
-  
+
   if [ $(cat /etc/mtab | grep -o "${ATL_JIRA_SHARED_HOME}") ];
   then
     log "location ${ATL_JIRA_SHARED_HOME} is already mounted"
     return 0
   fi
-  
+
   [ -d "${ATL_JIRA_SHARED_HOME}" ] || mkdir -p "${ATL_JIRA_SHARED_HOME}"
   mount -t cifs ${mount_share} ${ATL_JIRA_SHARED_HOME} -o ${mount_options}
-  
+
   if [ ! $(cat /etc/mtab | grep -o "${ATL_JIRA_SHARED_HOME}") ];
   then
     error "mount failed"
   fi
-  
+
   if [ ${persist} ];
   then
     # create a backup of fstab
     cp /etc/fstab /etc/fstab_backup
-    
+
     # update /etc/fstab
     echo ${mount_share} ${ATL_JIRA_SHARED_HOME} cifs ${mount_options} >> /etc/fstab
-    
+
     # test that mount works
     umount ${ATL_JIRA_SHARED_HOME}
     mount ${ATL_JIRA_SHARED_HOME}
-    
+
     if [ ! $(cat /etc/mtab | grep -o "${ATL_JIRA_SHARED_HOME}") ];
     then
       # revert changes
@@ -237,14 +238,6 @@ function hydrate_shared_config {
          export DB_DRIVER_CLASS="com.microsoft.sqlserver.jdbc.SQLServerDriver"
          export DB_JDBCURL="jdbc:sqlserver://${DB_SERVER_NAME}:${DB_PORT};database=${DB_NAME};encrypt=true;trustServerCertificate=false;hostNameInCertificate=${DB_TRUSTED_HOST}"
          export DB_USER_LIQUIBASE="${DB_USER}@${DB_SERVER_NAME}"
-         ;;
-     postgres)
-         export DB_CONFIG_TYPE="postgres72"
-         export DB_DRIVER_JAR="$(basename ${ATL_POSTGRES_DRIVER_URL})"
-         export DB_DRIVER_CLASS="org.postgresql.Driver"
-         export DB_USER="$DB_USER@$(echo ${DB_SERVER_NAME} | cut -d '.' -f1)"
-         export DB_JDBCURL="jdbc:postgresql://${DB_SERVER_NAME}:${DB_PORT}/${DB_NAME}?ssl=true"
-         export DB_USER_LIQUIBASE="${DB_USER}"
          ;;
      *)
          error "Unsupported DB Type: ${DB_TYPE}"
@@ -317,7 +310,7 @@ function apply_database_dump {
     --logLevel=info \
     --changeLogFile=databaseChangeLog.xml \
     update
-  
+
   if [ "$?" -ne "0" ]; then
     copy_artefacts
     error "Liquibase dump failed with and error. Check logs and rectify!!"
@@ -357,7 +350,7 @@ httpPort\$Long=8080
 portChoice=default
 executeLauncherAction\$Boolean=false
 EOT
-  
+
   atl_log prepare_varfile "varfile is ready:"
   printf "`cat ${ATL_JIRA_VARFILE}`\n"
 }
@@ -376,7 +369,7 @@ function restore_installer {
 
   local installer_path="${ATL_JIRA_SHARED_HOME}/${jira_installer}"
   local installer_target="${ATL_TEMP_DIR}/installer"
-  
+
   if [[ -f ${installer_path} ]]; then
     cp ${installer_path} "${installer_target}"
     chmod 0700 "${installer_target}"
@@ -399,7 +392,7 @@ function ensure_readable {
 
   log "Making sure to be able to read [file=${path}]"
   while true; do
-    if [[ ! -f "${path}" ]]; then 
+    if [[ ! -f "${path}" ]]; then
       local end=$(date +%s)
       if [[ $(($end - $start)) -gt $timeout ]]; then
         error "Failed to ensure to be able to read [file=${path}]"
@@ -482,24 +475,6 @@ function install_jdbc_drivers {
   done
 
   atl_log install_jdbc_drivers 'JDBC drivers has been copied.'
-}
-
-function install_postgres_cert_if_needed {
-    atl_log install_postgres_cert_if_needed "Got DB Type: $DB_TYPE"
-    
-    if [[ $DB_TYPE == 'postgres' ]]
-    then
-        atl_log install_postgres_cert_if_needed "Downloading + configuring Azure Postgres cert"
-        # https://docs.microsoft.com/en-us/azure/postgresql/concepts-ssl-connection-security
-        curl -LO https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt
-        openssl x509 -inform DER -in BaltimoreCyberTrustRoot.crt -text -out root.crt
-
-        # Preinstall runs liquibase as root, node install runs as jira/confluence user created in install.
-        mkdir -p /home/jira/.postgresql ~root/.postgresql
-        cp -fp root.crt /home/jira/.postgresql
-        cp -fp root.crt ~root/.postgresql
-        chown jira:jira -R /home/jira/.postgresql
-    fi
 }
 
 function install_appinsights {
@@ -694,14 +669,14 @@ function set_shared_home_permissions {
   chmod -R 774 ${ATL_JIRA_INSTALL_DIR}
 }
 
-function install_oms_linux_agent {
-  atl_log install_oms_linx_agent "Have OMS Workspace Key? |${OMS_WORKSPACE_ID}|"
-  if [[ -n ${OMS_WORKSPACE_ID} ]]; then
-    atl_log install_oms_linx_agent  "Installing OMS Linux Agent with workspace id: ${OMS_WORKSPACE_ID} and primary key: ${OMS_PRIMARY_KEY}"
-    wget https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh && sh onboard_agent.sh -w "${OMS_WORKSPACE_ID}" -s "${OMS_PRIMARY_KEY}" -d opinsights.azure.com
-    atl_log install_oms_linx_agent  "Finished installing OMS Linux Agent!"
-  fi
-}
+# function install_oms_linux_agent {
+#   atl_log install_oms_linx_agent "Have OMS Workspace Key? |${OMS_WORKSPACE_ID}|"
+#   if [[ -n ${OMS_WORKSPACE_ID} ]]; then
+#     atl_log install_oms_linx_agent  "Installing OMS Linux Agent with workspace id: ${OMS_WORKSPACE_ID} and primary key: ${OMS_PRIMARY_KEY}"
+#     wget https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh && sh onboard_agent.sh -w "${OMS_WORKSPACE_ID}" -s "${OMS_PRIMARY_KEY}" -d opinsights.azure.com
+#     atl_log install_oms_linx_agent  "Finished installing OMS Linux Agent!"
+#   fi
+# }
 
 function enable_jira_service {
   atl_log enable_jira_service "Enabling Jira systemd service"
@@ -758,7 +733,7 @@ function install_jira {
   perform_install
   configure_jira
   remount_share
-  install_oms_linux_agent
+  #install_oms_linux_agent
   enable_jira_service
   atl_log install_jira "Done installing JIRA! Starting..."
   disable_rhel_firewall
