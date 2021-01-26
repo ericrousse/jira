@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -x
+whoami
 
 ATL_GENERATE_PASSWORD_SCRIPT="print(com.atlassian.security.password.DefaultPasswordEncoder.getDefaultInstance().encodePassword(arguments[0]));"
 ATL_GENERATE_SERVER_ID_SCRIPT="print((new com.atlassian.license.DefaultSIDManager()).generateSID());"
@@ -395,6 +396,9 @@ function ensure_readable {
   local start=$(date +%s)
 
   log "Making sure to be able to read [file=${path}]"
+  touch /media/atl/jira/shared/test
+  echo toto > /media/atl/jira/shared/toto
+
   while true; do
     if [[ ! -f "${path}" ]]; then
       local end=$(date +%s)
