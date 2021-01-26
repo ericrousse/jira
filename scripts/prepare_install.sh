@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -x
-echo $@
 
 ATL_GENERATE_PASSWORD_SCRIPT="print(com.atlassian.security.password.DefaultPasswordEncoder.getDefaultInstance().encodePassword(arguments[0]));"
 ATL_GENERATE_SERVER_ID_SCRIPT="print((new com.atlassian.license.DefaultSIDManager()).generateSID());"
@@ -91,13 +90,13 @@ function install_pacapt {
   sudo chmod 755 /usr/local/bin/pacapt
 }
 
-function install_redhat_epel_if_needed {
-  if [[ -n ${IS_REDHAT} ]]
-  then
-	  wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-	  yum install -y ./epel-release-latest-*.noarch.rpm
-  fi
-}
+# function install_redhat_epel_if_needed {
+#   if [[ -n ${IS_REDHAT} ]]
+#   then
+# 	  wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+# 	  yum install -y ./epel-release-latest-*.noarch.rpm
+#   fi
+# }
 
 function install_core_dependencies {
   # Seeing consistent issues on Azure where apt/yum not get full list of azure repos and then not able to install dependencies.
@@ -118,7 +117,7 @@ function install_core_dependencies {
   fi
 
   # nc/nmap-ncat needed on RHEL jumpbox for SSH proxying
-  [ -n "${IS_REDHAT}" ] && pacapt install --noconfirm java-1.8.0-openjdk-headless nc || pacapt install --noconfirm openjdk-8-jre-headless
+  # [ -n "${IS_REDHAT}" ] && pacapt install --noconfirm java-1.8.0-openjdk-headless nc || pacapt install --noconfirm openjdk-8-jre-headless
 }
 
 function prepare_password_generator {
@@ -709,14 +708,14 @@ function enable_jira_service {
   systemctl enable jira.service
 }
 
-function disable_rhel_firewall {
-  if [[ -n ${IS_REDHAT} ]]
-  then
-    atl_log disable_rhel_firewall  "Disabling RHEL Firewall - using Azure Cluster NSG to maintain access rules"
-    systemctl stop firewalld.service
-    systemctl disable firewalld.service
-  fi
-}
+# function disable_rhel_firewall {
+#   if [[ -n ${IS_REDHAT} ]]
+#   then
+#     atl_log disable_rhel_firewall  "Disabling RHEL Firewall - using Azure Cluster NSG to maintain access rules"
+#     systemctl stop firewalld.service
+#     systemctl disable firewalld.service
+#   fi
+# }
 
 function preloadDatabase {
   atl_log preloadDatabase  "Preloading new database"
@@ -759,7 +758,7 @@ function install_jira {
   #install_oms_linux_agent
   enable_jira_service
   atl_log install_jira "Done installing JIRA! Starting..."
-  disable_rhel_firewall
+  # disable_rhel_firewall
   systemctl start jira.service
   install_appinsights_collectd
   set_shared_home_permissions
@@ -772,7 +771,7 @@ do
   atl_log main "Arg $i: ${!i}"
 done
 
-IS_REDHAT=$(cat /etc/os-release | egrep '^ID' | grep rhel)
+# IS_REDHAT=$(cat /etc/os-release | egrep '^ID' | grep rhel)
 install_pacapt
 install_redhat_epel_if_needed
 install_core_dependencies
