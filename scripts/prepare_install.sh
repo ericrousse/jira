@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x
+set -x -v -e
 whoami
 
 ATL_GENERATE_PASSWORD_SCRIPT="print(com.atlassian.security.password.DefaultPasswordEncoder.getDefaultInstance().encodePassword(arguments[0]));"
