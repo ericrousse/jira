@@ -535,23 +535,23 @@ function install_appinsights_collectd {
   if [ -n "${APPINSIGHTS_INSTRUMENTATION_KEY}" ]
   then
     atl_log install_appinsights_collectd "Configuring collectd to publish Jira JMX"
-    if [[ -n ${IS_REDHAT} ]]
-    then
-      # https://bugs.centos.org/view.php?id=15495
-      pacapt install --noconfirm install collectd collectd-generic-jmx.x86_64 collectd-java.x86_64 collectd-sensors.x86_64 collectd-rrdtool.x86_64 glib2.x86_64
-      ln -sf /usr/lib64/collectd /usr/lib/collectd
+    # if [[ -n ${IS_REDHAT} ]]
+    # then
+    #   # https://bugs.centos.org/view.php?id=15495
+    #   pacapt install --noconfirm install collectd collectd-generic-jmx.x86_64 collectd-java.x86_64 collectd-sensors.x86_64 collectd-rrdtool.x86_64 glib2.x86_64
+    #   ln -sf /usr/lib64/collectd /usr/lib/collectd
 
-      # https://github.com/collectd/collectd/issues/635
-      ln -sf /etc/alternatives/jre/lib/amd64/server/libjvm.so /lib64
-      check_collectd_java_linking
-      cp -fp ${ATL_JIRA_SHARED_HOME}/jira-collectd.conf /etc/collectd.d
-      chmod +r /etc/collectd.d/*.conf
+    #   # https://github.com/collectd/collectd/issues/635
+    #   ln -sf /etc/alternatives/jre/lib/amd64/server/libjvm.so /lib64
+    #   check_collectd_java_linking
+    #   cp -fp ${ATL_JIRA_SHARED_HOME}/jira-collectd.conf /etc/collectd.d
+    #   chmod +r /etc/collectd.d/*.conf
 
-      # Disable SELINUX - prevents Collectd logfile writing to /var/log
-      # https://serverfault.com/questions/797039/collectd-permission-denied-to-log-file
-      setenforce 0
-      sed --in-place=.bak 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
-    else
+    #   # Disable SELINUX - prevents Collectd logfile writing to /var/log
+    #   # https://serverfault.com/questions/797039/collectd-permission-denied-to-log-file
+    #   setenforce 0
+    #   sed --in-place=.bak 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
+    # else
       pacapt install --noconfirm collectd
 
       # Use JDK11 libjvm.so if exists or fall back on Java 8 to plug gaps in collectd library path issues.
@@ -560,7 +560,7 @@ function install_appinsights_collectd {
       check_collectd_java_linking
       cp -fp ${ATL_JIRA_SHARED_HOME}/jira-collectd.conf /etc/collectd/collectd.conf
       chmod +r /etc/collectd/collectd.conf
-    fi
+    # fi
 
     # JAXB now required for JDK > 8 for AppInsights + Collectd. Ubuntu Collectd now compiled/using JDK 11 as no choice
     curl -LO https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.3.1/jaxb-api-2.3.1.jar
@@ -773,7 +773,7 @@ done
 
 # IS_REDHAT=$(cat /etc/os-release | egrep '^ID' | grep rhel)
 install_pacapt
-install_redhat_epel_if_needed
+#install_redhat_epel_if_needed
 install_core_dependencies
 prepare_env $1 $3 $5
 source setenv.sh
