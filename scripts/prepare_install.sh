@@ -8,6 +8,7 @@ ATL_GENERATE_SERVER_ID_SCRIPT="print((new com.atlassian.license.DefaultSIDManage
 ATL_TEMP_DIR="/tmp"
 ATL_JIRA_VARFILE="${ATL_TEMP_DIR}/jira.varfile"
 ATL_MSSQL_DRIVER_URL="https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/7.2.1.jre8/mssql-jdbc-7.2.1.jre8.jar"
+ATL_POSTGRES_DRIVER_URL="https://repo1.maven.org/maven2/org/postgresql/postgresql/42.2.6/postgresql-42.2.6.jar"
 
 
 function atl_log {
@@ -87,7 +88,6 @@ function download_installer {
 function install_pacapt {
   wget -O /usr/local/bin/pacapt https://github.com/icy/pacapt/raw/ng/pacapt
   sudo chmod 755 /usr/local/bin/pacapt
-  #PATH=$PATH:/usr/local/bin
 }
 
 function install_redhat_epel_if_needed {
@@ -234,6 +234,14 @@ function hydrate_shared_config {
          export DB_DRIVER_CLASS="com.microsoft.sqlserver.jdbc.SQLServerDriver"
          export DB_JDBCURL="jdbc:sqlserver://${DB_SERVER_NAME}:${DB_PORT};database=${DB_NAME};encrypt=true;trustServerCertificate=false;hostNameInCertificate=${DB_TRUSTED_HOST}"
          export DB_USER_LIQUIBASE="${DB_USER}@${DB_SERVER_NAME}"
+         ;;
+     postgres)
+         export DB_CONFIG_TYPE="postgres72"
+         export DB_DRIVER_JAR="$(basename ${ATL_POSTGRES_DRIVER_URL})"
+         export DB_DRIVER_CLASS="org.postgresql.Driver"
+         export DB_USER="$DB_USER@$(echo ${DB_SERVER_NAME} | cut -d '.' -f1)"
+         export DB_JDBCURL="jdbc:postgresql://${DB_SERVER_NAME}:${DB_PORT}/${DB_NAME}?ssl=true"
+         export DB_USER_LIQUIBASE="${DB_USER}"
          ;;
      *)
          error "Unsupported DB Type: ${DB_TYPE}"
@@ -457,11 +465,11 @@ function perform_install {
   atl_log perform_install "${ATL_JIRA_PDORUCT} installation completed"
 }
 
-# Still need to install MSSQL jars for prepopulation of DB in prepare script.
+# Still need to install Postgres/MSSQL jars for prepopulation of DB in prepare script.
 function install_jdbc_drivers {
   local install_location="${1:-${ATL_JIRA_INSTALL_DIR}/lib}"
 
-  for jarURL in $(echo $ATL_MSSQL_DRIVER_URL )
+  for jarURL in $(echo $ATL_MSSQL_DRIVER_URL $ATL_POSTGRES_DRIVER_URL)
   do
      atl_log install_jdbc_drivers "Downloading JDBC driver from ${jarURL}"
      curl -O "${jarURL}"
@@ -471,6 +479,24 @@ function install_jdbc_drivers {
   done
 
   atl_log install_jdbc_drivers 'JDBC drivers has been copied.'
+}
+
+function install_postgres_cert_if_needed {
+    atl_log install_postgres_cert_if_needed "Got DB Type: $DB_TYPE"
+
+    if [[ $DB_TYPE == 'postgres' ]]
+    then
+        atl_log install_postgres_cert_if_needed "Downloading + configuring Azure Postgres cert"
+        # https://docs.microsoft.com/en-us/azure/postgresql/concepts-ssl-connection-security
+        curl -LO https://www.digicert.com/CACerts/BaltimoreCyberTrustRoot.crt
+        openssl x509 -inform DER -in BaltimoreCyberTrustRoot.crt -text -out root.crt
+
+        # Preinstall runs liquibase as root, node install runs as jira/confluence user created in install.
+        mkdir -p /home/jira/.postgresql ~root/.postgresql
+        cp -fp root.crt /home/jira/.postgresql
+        cp -fp root.crt ~root/.postgresql
+        chown jira:jira -R /home/jira/.postgresql
+    fi
 }
 
 function install_appinsights {
@@ -624,6 +650,10 @@ function configure_jira {
   configure_cluster
   atl_log configure_jira "Done configuring cluster!"
 
+  atl_log configure_jira "Configuring Postgres SSL..."
+  install_postgres_cert_if_needed
+  atl_log configure_jira "Done configuring Postgres SSL!"
+
   atl_log configure_jira "Configuring app insights..."
   install_appinsights
   atl_log configure_jira "Done app insights!"
@@ -661,6 +691,15 @@ function set_shared_home_permissions {
   chmod -R 774 ${ATL_JIRA_INSTALL_DIR}
 }
 
+function install_oms_linux_agent {
+  atl_log install_oms_linx_agent "Have OMS Workspace Key? |${OMS_WORKSPACE_ID}|"
+  if [[ -n ${OMS_WORKSPACE_ID} ]]; then
+    atl_log install_oms_linx_agent  "Installing OMS Linux Agent with workspace id: ${OMS_WORKSPACE_ID} and primary key: ${OMS_PRIMARY_KEY}"
+    wget https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh && sh onboard_agent.sh -w "${OMS_WORKSPACE_ID}" -s "${OMS_PRIMARY_KEY}" -d opinsights.azure.com
+    atl_log install_oms_linx_agent  "Finished installing OMS Linux Agent!"
+  fi
+}
+
 function enable_jira_service {
   atl_log enable_jira_service "Enabling Jira systemd service"
   mv jira.service /lib/systemd/system/jira.service
@@ -696,6 +735,7 @@ function prepare_install {
   preserve_installer
   hydrate_shared_config
   install_jdbc_drivers "`pwd`"
+  install_postgres_cert_if_needed
   if [ $DB_CREATE = 'true' ]
   then
      preloadDatabase
@@ -715,6 +755,7 @@ function install_jira {
   perform_install
   configure_jira
   remount_share
+  #install_oms_linux_agent
   enable_jira_service
   atl_log install_jira "Done installing JIRA! Starting..."
   disable_rhel_firewall
