@@ -480,7 +480,7 @@ function install_jdbc_drivers {
      curl -O "${jarURL}"
 
      atl_log install_jdbc_drivers "Copying JDBC driver to ${install_location}"
-     cp -fp $(basename $(echo ${jarURL})) "${install_location}"
+     #cp -fp $(basename $(echo ${jarURL})) "${install_location}"
   done
 
   atl_log install_jdbc_drivers 'JDBC drivers has been copied.'
