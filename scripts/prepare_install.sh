@@ -470,7 +470,9 @@ function perform_install {
 
 # Still need to install Postgres/MSSQL jars for prepopulation of DB in prepare script.
 function install_jdbc_drivers {
-  local install_location="${ATL_JIRA_INSTALL_DIR}/lib"
+  echo ${ATL_JIRA_INSTALL_DIR}
+  echo ${1}
+  local install_location="${1:-${ATL_JIRA_INSTALL_DIR}/lib}"
 
   for jarURL in $(echo $ATL_MSSQL_DRIVER_URL $ATL_POSTGRES_DRIVER_URL)
   do
