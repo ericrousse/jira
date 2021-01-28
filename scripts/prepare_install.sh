@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x -v -e
+set -x
 
 ATL_GENERATE_PASSWORD_SCRIPT="print(com.atlassian.security.password.DefaultPasswordEncoder.getDefaultInstance().encodePassword(arguments[0]));"
 ATL_GENERATE_SERVER_ID_SCRIPT="print((new com.atlassian.license.DefaultSIDManager()).generateSID());"
@@ -315,6 +315,16 @@ function apply_database_dump {
     --logLevel=info \
     --changeLogFile=databaseChangeLog.xml \
     update
+    atl_log "java -jar liquibase-core-3.5.3.jar \
+    --classpath="${DB_DRIVER_JAR}" \
+    --driver=${DB_DRIVER_CLASS} \
+    --url="${DB_JDBCURL}" \
+    --username="${DB_USER_LIQUIBASE}" \
+    --password="${DB_PASSWORD}" \
+    --logLevel=info \
+    --changeLogFile=databaseChangeLog.xml \
+    update"
+    atl_log "$?"
 
   if [ "$?" -ne "0" ]; then
     copy_artefacts
