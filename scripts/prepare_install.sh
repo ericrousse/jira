@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -x -v -e
-whoami
 
 ATL_GENERATE_PASSWORD_SCRIPT="print(com.atlassian.security.password.DefaultPasswordEncoder.getDefaultInstance().encodePassword(arguments[0]));"
 ATL_GENERATE_SERVER_ID_SCRIPT="print((new com.atlassian.license.DefaultSIDManager()).generateSID());"
@@ -471,7 +470,7 @@ function perform_install {
 
 # Still need to install Postgres/MSSQL jars for prepopulation of DB in prepare script.
 function install_jdbc_drivers {
-  local install_location="${1:-${ATL_JIRA_INSTALL_DIR}/lib}"
+  local install_location="${ATL_JIRA_INSTALL_DIR}/lib}"
 
   for jarURL in $(echo $ATL_MSSQL_DRIVER_URL $ATL_POSTGRES_DRIVER_URL)
   do
