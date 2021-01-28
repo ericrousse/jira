@@ -110,6 +110,7 @@ function install_core_dependencies {
   pacapt install --noconfirm rsync
   pacapt install --noconfirm netcat
   pacapt install --noconfirm jq
+  pacapt install --noconfirm openjdk-8-jre-headless
 
   # If any of the commands fail above due to locks etc it'll fail at one above.
   if [ "$?" -ne "0" ]; then
@@ -395,8 +396,6 @@ function ensure_readable {
   local start=$(date +%s)
 
   log "Making sure to be able to read [file=${path}]"
-  touch /media/atl/jira/shared/test
-  echo toto > /media/atl/jira/shared/toto
 
   while true; do
     if [[ ! -f "${path}" ]]; then
