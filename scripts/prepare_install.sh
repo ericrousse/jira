@@ -233,7 +233,7 @@ function hydrate_shared_config {
          export DB_CONFIG_TYPE="mssql"
          export DB_DRIVER_JAR="$(basename ${ATL_MSSQL_DRIVER_URL})"
          export DB_DRIVER_CLASS="com.microsoft.sqlserver.jdbc.SQLServerDriver"
-         export DB_JDBCURL="jdbc:sqlserver://${DB_SERVER_NAME}:${DB_PORT};database=${DB_NAME};encrypt=true;trustServerCertificate=false;hostNameInCertificate=${DB_TRUSTED_HOST}"
+         export DB_JDBCURL="jdbc:sqlserver://${DB_SERVER_NAME}:${DB_PORT};database=${DB_NAME};user=${DB_USER}@{$DB_SERVER_NAME};Password=${DB_PASSWORD};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30"
          export DB_USER_LIQUIBASE="${DB_USER}@${DB_SERVER_NAME}"
          ;;
      postgres)
