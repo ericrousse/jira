@@ -1,30 +1,6 @@
 #cloud-config
-# Update apt database on first boot
-# (ie run apt-get update)
-#
-# Default: true
-# Aliases: apt_update
-package_update: true
 
-# Upgrade the instance on first boot
-# (ie run apt-get upgrade)
-#
-# Default: false
-# Aliases: apt_upgrade
-package_upgrade: true
-
-# Reboot after package install/update if necessary
-# Default: false
-# Aliases: apt_reboot_if_required
-package_reboot_if_required: true
-
-# For 'apt' specific config, see cloud-config-apt.txt
-packages:
-  - pwgen
-  - pastebinit
-
-manage_resolv_conf: true
-
-resolv_conf:
-  searchdomains:
-    - azure-np.hydro.qc.ca
+runcmd:
+  - [ls, -l, /]
+  - [sh, -xc, "echo $(date) ': hello world!'"]
+  - [sh, -c, echo "=========hello world'========="]
