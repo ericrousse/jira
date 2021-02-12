@@ -1,9 +1,1 @@
-#cloud-config
-
-runcmd:
-  - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys CC86BB64 -y
-  - sudo add-apt-repository ppa:rmescandon/yq -y
-  - sudo apt update
-  - sudo apt install yq -y
-  - yq w -i /etc/netplan/50-cloud-init.yaml network.ethernets.eth0.nameservers.search[+] "azure-np.hydro.qc.ca"
-  - netplan apply
+I2Nsb3VkLWNvbmZpZwp3cml0ZV9maWxlczoKICAtIHBhdGg6IC9ldGMvc3lzdGVtZC9yZXNvbHZlZC5jb25mCiAgICBjb250ZW50OiB8CiAgICAgIERvbWFpbnM9YXp1cmUtbnAuaHlkcm8ucWMuY2EKICAgIGFwcGVuZDogdHJ1ZQogIC0gb3duZXI6IHJvb3Q6cm9vdAogICAgcGF0aDogL2V0Yy9jcm9uLmQvYWRtaW5jZWxsdWxlCiAgICBjb250ZW50OiB8CiAgICAgIDA2IDE1ICogKiAqIHJvb3QgZWNobyAtZSBhZG1pbmNlbGx1bGU6JCh0ciAtZGMgQS1aYS16MC05IDwvZGV2L3VyYW5kb20gfCBoZWFkIC1jIDMwIDsgZWNobyAnJykgfCAvdXNyL3NiaW4vY2hwYXNzd2QKdXNlcnM6CiAgLSBkZWZhdWx0CiAgLSBuYW1lOiBhZG1pbmNlbGx1bGUKICAgIGxvY2tfcGFzc3dkOiBmYWxzZQogICAgc3VkbzogQUxMPShBTEwpIEFMTAogICAgc2hlbGw6IC9iaW4vYmFzaApydW5jbWQ6CiAgLSBbIHN5c3RlbWN0bCwgcmVzdGFydCwgc3lzdGVtZC1yZXNvbHZlZCBd
