@@ -233,7 +233,7 @@ function hydrate_shared_config {
          export DB_CONFIG_TYPE="mssql"
          export DB_DRIVER_JAR="$(basename ${ATL_MSSQL_DRIVER_URL})"
          export DB_DRIVER_CLASS="com.microsoft.sqlserver.jdbc.SQLServerDriver"
-         export DB_JDBCURL="jdbc:sqlserver://${DB_SERVER_NAME}:${DB_PORT};database=${DB_NAME};user=${DB_USER}@${DB_SERVER_NAME};Password=${DB_PASSWORD};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30"
+         export DB_JDBCURL="jdbc:sqlserver://${DB_SERVER_NAME_PRIVATE_IP}:${DB_PORT};database=${DB_NAME};user=${DB_USER}@${DB_SERVER_NAME};Password=${DB_PASSWORD};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30"
          export DB_USER_LIQUIBASE="${DB_USER}@${DB_SERVER_NAME}"
          ;;
      postgres)
@@ -785,6 +785,7 @@ if [ "$2" == "prepare" ]; then
   export SERVER_AZURE_DOMAIN="${3}"
   export DB_SERVER_NAME="${4}"
   export APPINSIGHTS_INSTRUMENTATION_KEY="${6}"
+  export DB_SERVER_NAME_PRIVATE_IP="${7}"
   prepare_install
 fi
 
