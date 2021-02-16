@@ -7,7 +7,7 @@ ATL_GENERATE_SERVER_ID_SCRIPT="print((new com.atlassian.license.DefaultSIDManage
 
 ATL_TEMP_DIR="/tmp"
 ATL_JIRA_VARFILE="${ATL_TEMP_DIR}/jira.varfile"
-ATL_MSSQL_DRIVER_URL="https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/7.4.1.jre8/mssql-jdbc-7.4.1.jre8.jar"
+ATL_MSSQL_DRIVER_URL="https://repo1.maven.org/maven2/com/microsoft/sqlserver/mssql-jdbc/7.2.1.jre8/mssql-jdbc-7.2.1.jre8.jar"
 ATL_POSTGRES_DRIVER_URL="https://repo1.maven.org/maven2/org/postgresql/postgresql/42.2.6/postgresql-42.2.6.jar"
 
 
@@ -169,7 +169,7 @@ function mount_share {
   local gid=${3:-0}
   creds_file="/etc/cifs.${ATL_JIRA_SHARED_HOME_NAME}"
   mount_options="vers=3.0,uid=${uid},gid=${gid},dir_mode=0750,file_mode=0640,credentials=${creds_file}"
-  mount_share="//${STORAGE_ACCOUNT_PRIVATE_NAME}.azure-np.hydro.qc.ca/${ATL_JIRA_SHARED_HOME_NAME}"
+  mount_share="//${STORAGE_ACCOUNT}.azure-np.hydro.qc.ca/${ATL_JIRA_SHARED_HOME_NAME}"
 
   log "creating credentials at ${creds_file}"
   echo "username=${STORAGE_ACCOUNT}" >> ${creds_file}
@@ -233,7 +233,7 @@ function hydrate_shared_config {
          export DB_CONFIG_TYPE="mssql"
          export DB_DRIVER_JAR="$(basename ${ATL_MSSQL_DRIVER_URL})"
          export DB_DRIVER_CLASS="com.microsoft.sqlserver.jdbc.SQLServerDriver"
-         export DB_JDBCURL="jdbc:sqlserver://${DB_SERVER_NAME_PRIVATE_IP}:${DB_PORT};database=${DB_NAME};user=${DB_USER}@${DB_SERVER_NAME};Password=${DB_PASSWORD};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30"
+         export DB_JDBCURL="jdbc:sqlserver://${DB_SERVER_NAME}:${DB_PORT};database=${DB_NAME};user=${DB_USER}@${DB_SERVER_NAME};Password=${DB_PASSWORD};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30"
          export DB_USER_LIQUIBASE="${DB_USER}@${DB_SERVER_NAME}"
          ;;
      postgres)
@@ -785,7 +785,6 @@ if [ "$2" == "prepare" ]; then
   export SERVER_AZURE_DOMAIN="${3}"
   export DB_SERVER_NAME="${4}"
   export APPINSIGHTS_INSTRUMENTATION_KEY="${6}"
-  export DB_SERVER_NAME_PRIVATE_IP="${7}"
   prepare_install
 fi
 
