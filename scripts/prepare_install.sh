@@ -421,7 +421,7 @@ function prepare_installer {
   atl_log prepare_installer "Checking if installer has been downloaded aready"
   ensure_readable "${ATL_JIRA_SHARED_HOME}/server.xml"
   if [[ -f ${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version ]]; then
-    local jira_version=${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version
+    local jira_version=$(cat${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version)
     if [[ -f ${ATL_JIRA_SHARED_HOME}/atlassian-${ATL_JIRA_PRODUCT}-${jira_version}-x64.bin ]]; then
       atl_log prepare_installer "Detected installer, restoring it"
       restore_installer
