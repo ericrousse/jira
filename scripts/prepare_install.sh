@@ -430,6 +430,7 @@ function prepare_installer {
       download_installer
       preserve_installer
       restore_installer
+    fi
   else
     atl_log prepare_installer "No installer has been found, fresh installation, downloading..."
     download_installer
