@@ -422,7 +422,8 @@ function prepare_installer {
   ensure_readable "${ATL_JIRA_SHARED_HOME}/server.xml"
   if [[ -f ${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version ]]; then
     local jira_version=$(cat${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version)
-    if [[ -f ${ATL_JIRA_SHARED_HOME}/atlassian-${ATL_JIRA_PRODUCT}-${jira_version}-x64.bin ]]; then
+    local bin=${ATL_JIRA_SHARED_HOME}/atlassian-${ATL_JIRA_PRODUCT}-${jira_version}-x64.bin
+    if [[ -f $bin ]]; then
       atl_log prepare_installer "Detected installer, restoring it"
       restore_installer
     else
