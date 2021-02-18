@@ -315,7 +315,6 @@ function apply_database_dump {
     --logLevel=info \
     --changeLogFile=databaseChangeLog.xml \
     update
-    atl_log "$?"
 
   if [ "$?" -ne "0" ]; then
     copy_artefacts
@@ -418,13 +417,21 @@ function ensure_readable {
 # Check if we already have installer in shared home and restores it if we do
 # otherwise just downloads the installer and puts it into shared home
 function prepare_installer {
+
   atl_log prepare_installer "Checking if installer has been downloaded aready"
   ensure_readable "${ATL_JIRA_SHARED_HOME}/server.xml"
   if [[ -f ${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version ]]; then
-    atl_log prepare_installer "Detected installer, restoring it"
-    restore_installer
+    local jira_version=${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version
+    if [[ -f ${ATL_JIRA_SHARED_HOME}/atlassian-${ATL_JIRA_PRODUCT}-${jira_version}-x64.bin ]]; then
+      atl_log prepare_installer "Detected installer, restoring it"
+      restore_installer
+    else
+      atl_log prepare_installer "No installer has been found, upgrade in progress, downloading..."
+      download_installer
+      preserve_installer
+      restore_installer
   else
-    atl_log prepare_installer "No installer has been found, downloading..."
+    atl_log prepare_installer "No installer has been found, fresh installation, downloading..."
     download_installer
     preserve_installer
     restore_installer
