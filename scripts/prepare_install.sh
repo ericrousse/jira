@@ -66,18 +66,19 @@ function download_installer {
     if [[ $upgrade ]]
     then
       ATL_JIRA_PRODUCT_VERSION=$(cat ${ATL_JIRA_SHARED_HOME}/${ATL_JIRA_PRODUCT}.version)
-    else
-      log "Will use version: ${ATL_JIRA_PRODUCT_VERSION} but first retrieving latest jira version info from Atlassian..."
-      LATEST_INFO=$(curl -L -f --silent ${SOFTWARE_VERSION_URL} | sed 's/^downloads(//g' | sed 's/)$//g')
-      if [ "$?" -ne "0" ]
-      then
-        error "Could not get latest info installer description from ${SOFTWARE_VERSION_URL}"
-      fi
-
-      LATEST_VERSION=$(echo ${LATEST_INFO} | jq '.[] | select(.platform == "Unix") |  select(.zipUrl|test("x64")) | .version' | sed 's/"//g' | sort -nr | head -n1)
-      LATEST_SOFTWARE_VERSION_URL=$(echo ${LATEST_INFO} | jq '.[] | select(.platform == "Unix") |  select(.zipUrl|test("x64")) | .zipUrl' | sed 's/"//g' | sort -nr | head -n1)
-      log "Latest jira info: $LATEST_VERSION and download URL: $LATEST_SOFTWARE_VERSION_URL"
     fi
+
+    log "Will use version: ${ATL_JIRA_PRODUCT_VERSION} but first retrieving latest jira version info from Atlassian..."
+    LATEST_INFO=$(curl -L -f --silent ${SOFTWARE_VERSION_URL} | sed 's/^downloads(//g' | sed 's/)$//g')
+
+    if [ "$?" -ne "0" ]
+    then
+      error "Could not get latest info installer description from ${SOFTWARE_VERSION_URL}"
+    fi
+
+    LATEST_VERSION=$(echo ${LATEST_INFO} | jq '.[] | select(.platform == "Unix") |  select(.zipUrl|test("x64")) | .version' | sed 's/"//g' | sort -nr | head -n1)
+    LATEST_SOFTWARE_VERSION_URL=$(echo ${LATEST_INFO} | jq '.[] | select(.platform == "Unix") |  select(.zipUrl|test("x64")) | .zipUrl' | sed 's/"//g' | sort -nr | head -n1)
+    log "Latest jira info: $LATEST_VERSION and download URL: $LATEST_SOFTWARE_VERSION_URL"
   fi
 
   [ ${ATL_JIRA_PRODUCT_VERSION} = 'latest' ] &&  echo -n "${LATEST_VERSION}" > version || echo -n "${ATL_JIRA_PRODUCT_VERSION}" > version
