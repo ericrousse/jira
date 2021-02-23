@@ -254,7 +254,7 @@ function hydrate_shared_config {
 
   local template_files=(dbconfig.xml.template server.xml.template ApplicationInsights.xml.template jira-collectd.conf.template databaseChangeLog.xml.template)
   local output_file=""
-  for template_file in ${template_files[@]};
+  for template_file in "${template_files[@]}";
   do
     output_file=`echo "${template_file}" | sed 's/\.template$//'`
     cat ${template_file} | python hydrate_jira_config.py > ${output_file}
@@ -266,7 +266,7 @@ function copy_artefacts {
   local excluded_files=(version installer *.jar prepare_install.sh *.py *.sh *.template *.sql *.js *.xsl *.rpm)
 
   local exclude_rules=""
-  for file in ${excluded_files[@]};
+  for file in "${excluded_files[@]}";
   do
     exclude_rules="--exclude ${file} ${exclude_rules}"
   done
