@@ -61,18 +61,11 @@ function download_installer {
   # ATL_JIRA_PRODUCT can only either be "jira-software" or "servicedesk"
   [ ${ATL_JIRA_PRODUCT} = 'jira-software' ] && SOFTWARE_VERSION_URL="${BASE_URL}/jira-software.json" || SOFTWARE_VERSION_URL="${BASE_URL}/jira-servicedesk.json"
 
-  if [[ ! -n "${ATL_JIRA_CUSTOM_DOWNLOAD_URL}" ]]
+ if [ ! -n "${ATL_JIRA_CUSTOM_DOWNLOAD_URL}" ]
   then
-    if [[ $upgrade ]]
-    then
-      ATL_JIRA_PRODUCT_VERSION=$(cat ${ATL_JIRA_SHARED_HOME}/${ATL_JIRA_PRODUCT}.version)
-    fi
-
     log "Will use version: ${ATL_JIRA_PRODUCT_VERSION} but first retrieving latest jira version info from Atlassian..."
     LATEST_INFO=$(curl -L -f --silent ${SOFTWARE_VERSION_URL} | sed 's/^downloads(//g' | sed 's/)$//g')
-
-    if [ "$?" -ne "0" ]
-    then
+    if [ "$?" -ne "0" ]; then
       error "Could not get latest info installer description from ${SOFTWARE_VERSION_URL}"
     fi
 
@@ -90,6 +83,7 @@ function download_installer {
   then
     error "Could not download ${ATL_JIRA_PRODUCT} installer from ${jira_installer_url}"
   fi
+
 }
 
 function install_pacapt {
@@ -151,7 +145,7 @@ function install_password_generator {
 }
 
 function run_password_generator {
-  jjs -cp atlassian-password-encoder-3.2.3.jar:commons-lang-2.6.jar:commons-codec-1.9.jar:bcprov-jdk15on-1.50.jar generate-password.js -- $1
+  jjs -cp atlassian-password-encoder-3.2.3.jar:commons-lang-2.6.jar:commons-codec-1.9.jar:bcprov-jdk15on-1.50.jar generate-password.js -- "$1"
   if [ "$?" -ne "0" ]; then
       error "Error running the password generator!"
   fi
@@ -424,26 +418,13 @@ function ensure_readable {
 # Check if we already have installer in shared home and restores it if we do
 # otherwise just downloads the installer and puts it into shared home
 function prepare_installer {
-
   atl_log prepare_installer "Checking if installer has been downloaded aready"
   ensure_readable "${ATL_JIRA_SHARED_HOME}/server.xml"
   if [[ -f ${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version ]]; then
-    local jira_version=$(cat ${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version)
-    local bin=${ATL_JIRA_SHARED_HOME}/atlassian-${ATL_JIRA_PRODUCT}-${jira_version}-x64.bin
-
-    if [[ -f $bin ]]
-    then
-      atl_log prepare_installer "Detected installer, restoring it"
-      restore_installer
-    else
-      atl_log prepare_installer "No installer has been found, upgrade in progress, downloading..."
-      upgrade=true
-      download_installer
-      preserve_installer
-      restore_installer
-    fi
+    atl_log prepare_installer "Detected installer, restoring it"
+    restore_installer
   else
-    atl_log prepare_installer "No installer has been found, fresh installation, downloading..."
+    atl_log prepare_installer "No installer has been found, downloading..."
     download_installer
     preserve_installer
     restore_installer
