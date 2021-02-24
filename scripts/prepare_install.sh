@@ -383,10 +383,10 @@ function restore_installer {
     local msg="${ATL_JIRA_PRODUCT} installer ${jira_installer} has been requested but unable to locate it in ${ATL_JIRA_SHARED_HOME}"
     atl_log restore_installer "${msg}"
     atl_log restore_installer "Downloading missing installer..."
-    download_installer
-    preserve_installer
-    cp ${installer_path} "${installer_target}"
-    chmod 0700 "${installer_target}"
+    # download_installer
+    # preserve_installer
+    # cp ${installer_path} "${installer_target}"
+    # chmod 0700 "${installer_target}"
     #error "${msg}"
   fi
 
@@ -427,6 +427,8 @@ function prepare_installer {
   ensure_readable "${ATL_JIRA_SHARED_HOME}/server.xml"
   if [[ -f ${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version ]]; then
     atl_log prepare_installer "Detected installer, restoring it"
+    download_installer
+    preserve_installer
     restore_installer
   else
     atl_log prepare_installer "No installer has been found, downloading..."
