@@ -74,7 +74,7 @@ function download_installer {
     log "Latest jira info: $LATEST_VERSION and download URL: $LATEST_SOFTWARE_VERSION_URL"
   fi
 
-  [ ${ATL_JIRA_PRODUCT_VERSION} = 'latest' ] &&  echo -n "${LATEST_VERSION}" > version || echo -n "${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version" > version
+  [ ${ATL_JIRA_PRODUCT_VERSION} = 'latest' ] &&  echo -n "${LATEST_VERSION}" > version || cat "${ATL_JIRA_SHARED_HOME}/${ATL_JIRA_PRODUCT}.version" > version
   local jira_version=$(cat version)
   [ -n "${ATL_JIRA_CUSTOM_DOWNLOAD_URL}" ] && local jira_installer_url="${ATL_JIRA_CUSTOM_DOWNLOAD_URL}/atlassian-jira-software-${ATL_JIRA_PRODUCT_VERSION}-x64.bin"  || local jira_installer_url=$(echo ${LATEST_SOFTWARE_VERSION_URL} | sed "s/${LATEST_VERSION}/${jira_version}/g")
   log "Downloading ${ATL_JIRA_PRODUCT} installer from ${jira_installer_url}"
@@ -83,7 +83,6 @@ function download_installer {
   then
     error "Could not download ${ATL_JIRA_PRODUCT} installer from ${jira_installer_url}"
   fi
-
 }
 
 function install_pacapt {
@@ -111,7 +110,7 @@ function install_core_dependencies {
   pacapt install --noconfirm rsync
   pacapt install --noconfirm netcat
   pacapt install --noconfirm jq
-  pacapt install --noconfirm openjdk-8-jre-headless
+#  pacapt install --noconfirm openjdk-8-jre-headless
 
   # If any of the commands fail above due to locks etc it'll fail at one above.
   if [ "$?" -ne "0" ]; then
