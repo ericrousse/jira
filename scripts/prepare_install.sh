@@ -332,8 +332,17 @@ function apply_database_dump {
     --logLevel=info \
     --changeLogFile=databaseChangeLog.xml \
     update
+  atl_log java -jar liquibase-core-3.5.3.jar \
+    --classpath="${DB_DRIVER_JAR}" \
+    --driver=${DB_DRIVER_CLASS} \
+    --url="${DB_JDBCURL}" \
+    --username="${DB_USER_LIQUIBASE}" \
+    --password="${DB_PASSWORD}" \
+    --logLevel=info \
+    --changeLogFile=databaseChangeLog.xml \
+    update
 
-  if [ "$?" -ne "0" ]; then
+  if [ ! "$?" ]; then
     copy_artefacts
     error "Liquibase dump failed with and error. Check logs and rectify!!"
   else
@@ -342,8 +351,8 @@ function apply_database_dump {
 }
 
 function prepare_env {
-  for var in `printenv | grep _ATL_ENV_DATA`; do log $var; done
-  for var in `printenv | grep _ATL_ENV_DATA | cut -d "=" -f 1`; \
+  for var in $(printenv | grep _ATL_ENV_DATA); do log $var; done
+  for var in $(printenv | grep _ATL_ENV_DATA | cut -d "=" -f 1); \
     do printf '%s\n' "${!var}" | \
         base64 --decode | \
         jq -r '[.[] | { name, escaped_value: .value | @sh }] | .[]| "export " + .name + "=" + "$(echo " + .escaped_value + ")"' \
