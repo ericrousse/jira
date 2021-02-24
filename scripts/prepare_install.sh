@@ -74,7 +74,7 @@ function download_installer {
     log "Latest jira info: $LATEST_VERSION and download URL: $LATEST_SOFTWARE_VERSION_URL"
   fi
 
-  [ ${ATL_JIRA_PRODUCT_VERSION} = 'latest' ] &&  echo -n "${LATEST_VERSION}" > version || echo -n "${ATL_JIRA_PRODUCT_VERSION}" > version
+  [ ${ATL_JIRA_PRODUCT_VERSION} = 'latest' ] &&  echo -n "${LATEST_VERSION}" > version || echo -n "${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version" > version
   local jira_version=$(cat version)
   [ -n "${ATL_JIRA_CUSTOM_DOWNLOAD_URL}" ] && local jira_installer_url="${ATL_JIRA_CUSTOM_DOWNLOAD_URL}/atlassian-jira-software-${ATL_JIRA_PRODUCT_VERSION}-x64.bin"  || local jira_installer_url=$(echo ${LATEST_SOFTWARE_VERSION_URL} | sed "s/${LATEST_VERSION}/${jira_version}/g")
   log "Downloading ${ATL_JIRA_PRODUCT} installer from ${jira_installer_url}"
@@ -427,8 +427,6 @@ function prepare_installer {
   ensure_readable "${ATL_JIRA_SHARED_HOME}/server.xml"
   if [[ -f ${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version ]]; then
     atl_log prepare_installer "Detected installer, restoring it"
-    download_installer
-    preserve_installer
     restore_installer
   else
     atl_log prepare_installer "No installer has been found, downloading..."
