@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -x
-echo "hello"
 
 ATL_GENERATE_PASSWORD_SCRIPT="print(com.atlassian.security.password.DefaultPasswordEncoder.getDefaultInstance().encodePassword(arguments[0]));"
 ATL_GENERATE_SERVER_ID_SCRIPT="print((new com.atlassian.license.DefaultSIDManager()).generateSID());"
@@ -385,6 +384,9 @@ function restore_installer {
     atl_log restore_installer "${msg}"
     atl_log restore_installer "Downloading missing installer..."
     download_installer
+    preserve_installer
+    cp ${installer_path} "${installer_target}"
+    chmod 0700 "${installer_target}"
     #error "${msg}"
   fi
 
