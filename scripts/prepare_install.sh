@@ -50,8 +50,8 @@ function preserve_installer {
   local jira_installer="atlassian-${ATL_JIRA_PRODUCT}-${jira_version}-x64.bin"
 
   atl_log preserve_installer "preserving ${ATL_JIRA_PRODUCT} installer ${jira_installer} and metadata"
-  cp installer ${ATL_JIRA_SHARED_HOME}/${jira_installer}
-  cp version ${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version
+  cp installer "${ATL_JIRA_SHARED_HOME}/${jira_installer}"
+  cp version "${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version"
   atl_log preserve_installer "${ATL_JIRA_PRODUCT} installer ${jira_installer} and metadata has been preserved"
 }
 
@@ -59,24 +59,41 @@ function download_installer {
   local BASE_URL=https://my.atlassian.com/download/feeds/current
 
   # ATL_JIRA_PRODUCT can only either be "jira-software" or "servicedesk"
-  [ ${ATL_JIRA_PRODUCT} = 'jira-software' ] && SOFTWARE_VERSION_URL="${BASE_URL}/jira-software.json" || SOFTWARE_VERSION_URL="${BASE_URL}/jira-servicedesk.json"
+  if [ "${ATL_JIRA_PRODUCT}" = 'jira-software' ]; then
+    SOFTWARE_VERSION_URL="${BASE_URL}/jira-software.json"
+  else
+    SOFTWARE_VERSION_URL="${BASE_URL}/jira-servicedesk.json"
+  fi
 
- if [ ! -n "${ATL_JIRA_CUSTOM_DOWNLOAD_URL}" ]
+ if [ -z "${ATL_JIRA_CUSTOM_DOWNLOAD_URL}" ]
   then
     log "Will use version: ${ATL_JIRA_PRODUCT_VERSION} but first retrieving latest jira version info from Atlassian..."
     LATEST_INFO=$(curl -L -f --silent ${SOFTWARE_VERSION_URL} | sed 's/^downloads(//g' | sed 's/)$//g')
-    if [ "$?" -ne "0" ]; then
+    if [ ! "$?" ]; then
       error "Could not get latest info installer description from ${SOFTWARE_VERSION_URL}"
     fi
 
-    LATEST_VERSION=$(echo ${LATEST_INFO} | jq '.[] | select(.platform == "Unix") |  select(.zipUrl|test("x64")) | .version' | sed 's/"//g' | sort -nr | head -n1)
-    LATEST_SOFTWARE_VERSION_URL=$(echo ${LATEST_INFO} | jq '.[] | select(.platform == "Unix") |  select(.zipUrl|test("x64")) | .zipUrl' | sed 's/"//g' | sort -nr | head -n1)
+    LATEST_VERSION=$(echo "${LATEST_INFO}" | jq '.[] | select(.platform == "Unix") |  select(.zipUrl|test("x64")) | .version' | sed 's/"//g' | sort -nr | head -n1)
+    LATEST_SOFTWARE_VERSION_URL=$(echo "${LATEST_INFO}" | jq '.[] | select(.platform == "Unix") |  select(.zipUrl|test("x64")) | .zipUrl' | sed 's/"//g' | sort -nr | head -n1)
     log "Latest jira info: $LATEST_VERSION and download URL: $LATEST_SOFTWARE_VERSION_URL"
   fi
 
-  [ ${ATL_JIRA_PRODUCT_VERSION} = 'latest' ] &&  echo -n "${LATEST_VERSION}" > version || cat "${ATL_JIRA_SHARED_HOME}/${ATL_JIRA_PRODUCT}.version" > version
+  if [ "${ATL_JIRA_PRODUCT_VERSION}" = 'latest' ]; then
+    echo -n "${LATEST_VERSION}" > version
+  elif [[ -f ${ATL_JIRA_SHARED_HOME}/$ATL_JIRA_PRODUCT.version ]]; then
+    cat "${ATL_JIRA_SHARED_HOME}/${ATL_JIRA_PRODUCT}.version" > version
+  else
+    echo -n "${ATL_JIRA_PRODUCT_VERSION}" > version
+  fi
+
   local jira_version=$(cat version)
-  [ -n "${ATL_JIRA_CUSTOM_DOWNLOAD_URL}" ] && local jira_installer_url="${ATL_JIRA_CUSTOM_DOWNLOAD_URL}/atlassian-jira-software-${ATL_JIRA_PRODUCT_VERSION}-x64.bin"  || local jira_installer_url=$(echo ${LATEST_SOFTWARE_VERSION_URL} | sed "s/${LATEST_VERSION}/${jira_version}/g")
+
+  if [ -n "${ATL_JIRA_CUSTOM_DOWNLOAD_URL}" ]; then
+    local jira_installer_url="${ATL_JIRA_CUSTOM_DOWNLOAD_URL}/atlassian-jira-software-${ATL_JIRA_PRODUCT_VERSION}-x64.bin"
+  else
+    local jira_installer_url=$(echo "${LATEST_SOFTWARE_VERSION_URL}" | sed "s/${LATEST_VERSION}/${jira_version}/g")
+  fi
+
   log "Downloading ${ATL_JIRA_PRODUCT} installer from ${jira_installer_url}"
 
   if ! curl -L -f --silent "${jira_installer_url}" -o "installer" 2>&1
@@ -532,6 +549,29 @@ function install_appinsights {
   fi
 }
 
+
+function hq_custom {
+  atl_log install_appinsights "Custom stuff HQ"
+
+     atl_log install_appinsights "Installing App Insights"
+     pacapt install --noconfirm xsltproc
+     download_appinsights_jars ${ATL_JIRA_INSTALL_DIR}/atlassian-jira/WEB-INF/lib
+
+     cp -fp ${ATL_JIRA_INSTALL_DIR}/atlassian-jira/WEB-INF/web.xml ${ATL_JIRA_INSTALL_DIR}/atlassian-jira/WEB-INF/web.xml.orig
+     xsltproc -o ${ATL_JIRA_INSTALL_DIR}/atlassian-jira/WEB-INF/web.xml ./appinsights_transform_web_xml.xsl ${ATL_JIRA_INSTALL_DIR}/atlassian-jira/WEB-INF/web.xml
+
+     cp -fp ${ATL_JIRA_SHARED_HOME}/ApplicationInsights.xml ${ATL_JIRA_INSTALL_DIR}/atlassian-jira/WEB-INF/classes
+
+     atl_log install_appinsights "Switching on Jira JMX"
+     echo "jira.monitoring.jmx.enabled=true" >> ${ATL_JIRA_HOME}/jira-config.properties
+
+     # Tomcat/Jira config files seem to be be reworked between different versions of Jira ie catalina_opts previously configured in setenv.sh, now in set-gc-params.sh. Do both as no harm as is only doing work if finds text
+     cp -fp ${ATL_JIRA_INSTALL_DIR}/bin/setenv.sh ${ATL_JIRA_INSTALL_DIR}/bin/setenv.sh.orig
+     cp -fp ${ATL_JIRA_INSTALL_DIR}/bin/set-gc-params.sh ${ATL_JIRA_INSTALL_DIR}/bin/set-gc-params.sh.orig
+     sed 's/export CATALINA_OPTS/CATALINA_OPTS="${CATALINA_OPTS} -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"\nexport CATALINA_OPTS/' ${ATL_JIRA_INSTALL_DIR}/bin/setenv.sh.orig > ${ATL_JIRA_INSTALL_DIR}/bin/setenv.sh
+     sed 's/export CATALINA_OPTS/CATALINA_OPTS="${CATALINA_OPTS} -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"\nexport CATALINA_OPTS/' ${ATL_JIRA_INSTALL_DIR}/bin/set-gc-params.sh.orig > ${ATL_JIRA_INSTALL_DIR}/bin/set-gc-params.sh
+}
+
 function check_collectd_java_linking {
   # https://github.com/collectd/collectd/issues/635
   # Applied to both RHEL 7.5, Ubuntu 18.04 (but not 16.04)
@@ -618,18 +658,25 @@ function get_jira_ram {
   for mem in `free -m | grep "Mem:" | sed 's/\s\+/|/g' | cut -d '|' -f2`; do echo $((mem/100*75)); done
 }
 
-function get_default_jira_ram {
+function get_default_jira_ram_max {
   cat /opt/atlassian/jira/bin/setenv.sh | grep JVM_MAXIMUM_MEMORY= | cut -d '"' -f 2
+}
+
+function get_default_jira_ram_min {
+  cat /opt/atlassian/jira/bin/setenv.sh | grep JVM_MINIMUM_MEMORY= | cut -d '"' -f 2
 }
 
 function configure_jira_ram {
   atl_log configure_jira_ram "Adjusting JIRA's RAM settings to match the VM"
-  local default="$(get_default_jira_ram)"
+  local default_max="$(get_default_jira_ram_max)"
+  local default_min="$(get_default_jira_ram_min)"
   local ram="$(get_jira_ram)m"
   local file='setenv.sh'
   local path="${ATL_JIRA_INSTALL_DIR}/bin/${file}"
-  atl_log configure_jira_ram "Setting [${path}] to have [${ram}] instead of [${default}]"
-  sed -i "s/${default}/${ram}/g" "${path}"
+  atl_log configure_jira_ram "Setting [${path}] to have [${ram}] instead of [${default_max}]"
+  sed -i "s/${default_max}/${ram}/g" "${path}"
+  atl_log configure_jira_ram "Setting [${path}] to have [${ram}] instead of [${default_min}]"
+  sed -i "s/${default_min}/${ram}/g" "${path}"
 }
 
 function configure_jira {
@@ -716,6 +763,16 @@ function enable_jira_service {
   systemctl enable jira.service
 }
 
+
+function custom_config_hq {
+  atl_log custom_config_hq "Custom stuff HQ"
+  echo "jira.websudo.is.disabled=true" >> ${ATL_JIRA_HOME}/jira-config.properties
+  echo "jira.export.excel.enabled=true" >> ${ATL_JIRA_HOME}/jira-config.properties
+
+  #Download custom stuff
+  wget -O -P /opt/atlassian/jira/atlassian-jira/WEB-INF/lib https://github.com/javamelody/jira-confluence-javamelody/releases/download/1.86.0/jira-confluence-javamelody-1.86.0.jar
+}
+
 # function disable_rhel_firewall {
 #   if [[ -n ${IS_REDHAT} ]]
 #   then
@@ -762,6 +819,7 @@ function install_jira {
   prepare_fontconfig
   perform_install
   configure_jira
+  custom_config_hq
   remount_share
   #install_oms_linux_agent
   enable_jira_service
