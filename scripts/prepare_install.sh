@@ -127,7 +127,7 @@ function install_core_dependencies {
   pacapt install --noconfirm rsync
   pacapt install --noconfirm netcat
   pacapt install --noconfirm jq
-#  pacapt install --noconfirm openjdk-8-jre-headless
+  pacapt install --noconfirm openjdk-8-jre-headless
 
   # If any of the commands fail above due to locks etc it'll fail at one above.
   if [ "$?" -ne "0" ]; then
@@ -324,15 +324,6 @@ function get_trusted_dbhost {
 
 function apply_database_dump {
   java -jar liquibase-core-3.5.3.jar \
-    --classpath="${DB_DRIVER_JAR}" \
-    --driver=${DB_DRIVER_CLASS} \
-    --url="${DB_JDBCURL}" \
-    --username="${DB_USER_LIQUIBASE}" \
-    --password="${DB_PASSWORD}" \
-    --logLevel=info \
-    --changeLogFile=databaseChangeLog.xml \
-    update
-  atl_log java -jar liquibase-core-3.5.3.jar \
     --classpath="${DB_DRIVER_JAR}" \
     --driver=${DB_DRIVER_CLASS} \
     --url="${DB_JDBCURL}" \
