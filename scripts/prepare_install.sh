@@ -323,15 +323,6 @@ function get_trusted_dbhost {
 }
 
 function apply_database_dump {
-  java -jar liquibase-core-3.5.3.jar \
-    --classpath="${DB_DRIVER_JAR}" \
-    --driver="${DB_DRIVER_CLASS}" \
-    --url="${DB_JDBCURL}" \
-    --username="${DB_USER_LIQUIBASE}" \
-    --password="${DB_PASSWORD}" \
-    --logLevel=info \
-    --changeLogFile=databaseChangeLog.xml \
-    update
   atl_log "java -jar liquibase-core-3.5.3.jar \
     --classpath=${DB_DRIVER_JAR} \
     --driver=${DB_DRIVER_CLASS} \
@@ -341,6 +332,15 @@ function apply_database_dump {
     --logLevel=info \
     --changeLogFile=databaseChangeLog.xml \
     update"
+  java -jar liquibase-core-3.5.3.jar \
+    --classpath="${DB_DRIVER_JAR}" \
+    --driver="${DB_DRIVER_CLASS}" \
+    --url="${DB_JDBCURL}" \
+    --username="${DB_USER_LIQUIBASE}" \
+    --password="${DB_PASSWORD}" \
+    --logLevel=info \
+    --changeLogFile=databaseChangeLog.xml \
+    update
 
   if [ ! "$?" ]; then
     copy_artefacts
