@@ -133,9 +133,6 @@ function install_core_dependencies {
   if [ "$?" -ne "0" ]; then
       error "Error downloading core dependencies!"
   fi
-
-  # nc/nmap-ncat needed on RHEL jumpbox for SSH proxying
-  # [ -n "${IS_REDHAT}" ] && pacapt install --noconfirm java-1.8.0-openjdk-headless nc || pacapt install --noconfirm openjdk-8-jre-headless
 }
 
 function prepare_password_generator {
