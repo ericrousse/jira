@@ -423,7 +423,7 @@ function restore_installer {
 function ensure_readable {
   local path=$1
 
-  local timeout=300
+  local timeout=60
   local interval=10
 
   local start=$(date +%s)
