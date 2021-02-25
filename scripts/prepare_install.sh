@@ -215,7 +215,7 @@ function mount_share {
     cp /etc/fstab /etc/fstab_backup
 
     # update /etc/fstab
-    echo "${mount_share} ${ATL_JIRA_SHARED_HOME} cifs ${mount_options}" >> /etc/fstab
+    echo "${mount_share}" "${ATL_JIRA_SHARED_HOME}" cifs "${mount_options}" >> /etc/fstab
 
     # test that mount works
     umount "${ATL_JIRA_SHARED_HOME}"
