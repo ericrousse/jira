@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -x
-echo hello
 
 ATL_GENERATE_PASSWORD_SCRIPT="print(com.atlassian.security.password.DefaultPasswordEncoder.getDefaultInstance().encodePassword(arguments[0]));"
 ATL_GENERATE_SERVER_ID_SCRIPT="print((new com.atlassian.license.DefaultSIDManager()).generateSID());"
@@ -128,10 +127,10 @@ function install_core_dependencies {
   pacapt install --noconfirm rsync
   pacapt install --noconfirm netcat
   pacapt install --noconfirm jq
-  pacapt install --noconfirm openjdk-8-jre-headless
+#  pacapt install --noconfirm openjdk-8-jre-headless
 
   # If any of the commands fail above due to locks etc it'll fail at one above.
-  if [ ! "$?" ]; then
+  if [ "$?" -ne "0" ]; then
       error "Error downloading core dependencies!"
   fi
 
@@ -152,18 +151,18 @@ function install_password_generator {
     https://repo1.maven.org/maven2/org/liquibase/liquibase-core/3.5.3/liquibase-core-3.5.3.jar \
     https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk15on/1.50/bcprov-jdk15on-1.50.jar"
 
-  for aJar in $JARS
+  for aJar in $(echo $JARS)
   do
-    if [[ ! -f $(basename "$aJar") ]]
+    if [[ ! -f $(basename $aJar) ]]
     then
-      curl -LO "${aJar}"
+      curl -LO ${aJar}
     fi
   done
 }
 
 function run_password_generator {
   jjs -cp atlassian-password-encoder-3.2.3.jar:commons-lang-2.6.jar:commons-codec-1.9.jar:bcprov-jdk15on-1.50.jar generate-password.js -- "$1"
-  if [ ! "$?" ]; then
+  if [ "$?" -ne "0" ]; then
       error "Error running the password generator!"
   fi
 }
@@ -176,7 +175,7 @@ function prepare_server_id_generator {
 
 function generate_server_id {
   jjs -cp atlassian-extras-3.3.0.jar generate-serverid.js
-  if [ ! "$?" ]; then
+  if [ "$?" -ne "0" ]; then
       error "Error running the server id generator!"
   fi
 }
@@ -190,9 +189,9 @@ function mount_share {
   mount_share="//${STORAGE_ACCOUNT}.azure-np.hydro.qc.ca/${ATL_JIRA_SHARED_HOME_NAME}"
 
   log "creating credentials at ${creds_file}"
-  echo "username=${STORAGE_ACCOUNT}" >> "${creds_file}"
-  echo "password=${STORAGE_KEY}" >> "${creds_file}"
-  chmod 600 "${creds_file}"
+  echo "username=${STORAGE_ACCOUNT}" >> ${creds_file}
+  echo "password=${STORAGE_KEY}" >> ${creds_file}
+  chmod 600 ${creds_file}
 
   log "mounting share ${mount_share} at ${ATL_JIRA_SHARED_HOME} with options: ${mount_options}"
 
@@ -203,24 +202,24 @@ function mount_share {
   fi
 
   [ -d "${ATL_JIRA_SHARED_HOME}" ] || mkdir -p "${ATL_JIRA_SHARED_HOME}"
-  mount -t cifs "${mount_share}" "${ATL_JIRA_SHARED_HOME}" -o "${mount_options}"
+  mount -t cifs ${mount_share} ${ATL_JIRA_SHARED_HOME} -o ${mount_options}
 
   if [ ! $(cat /etc/mtab | grep -o "${ATL_JIRA_SHARED_HOME}") ];
   then
     error "mount failed"
   fi
 
-  if [ "${persist}" ];
+  if [ ${persist} ];
   then
     # create a backup of fstab
     cp /etc/fstab /etc/fstab_backup
 
     # update /etc/fstab
-    echo "${mount_share}" "${ATL_JIRA_SHARED_HOME}" cifs "${mount_options}" >> /etc/fstab
+    echo ${mount_share} ${ATL_JIRA_SHARED_HOME} cifs ${mount_options} >> /etc/fstab
 
     # test that mount works
-    umount "${ATL_JIRA_SHARED_HOME}"
-    mount "${ATL_JIRA_SHARED_HOME}"
+    umount ${ATL_JIRA_SHARED_HOME}
+    mount ${ATL_JIRA_SHARED_HOME}
 
     if [ ! $(cat /etc/mtab | grep -o "${ATL_JIRA_SHARED_HOME}") ];
     then
@@ -271,7 +270,7 @@ function hydrate_shared_config {
 
   local template_files=(dbconfig.xml.template server.xml.template ApplicationInsights.xml.template jira-collectd.conf.template databaseChangeLog.xml.template)
   local output_file=""
-  for template_file in ${template_files[@]};
+  for template_file in "${template_files[@]}";
   do
     output_file=`echo "${template_file}" | sed 's/\.template$//'`
     cat ${template_file} | python hydrate_jira_config.py > ${output_file}
@@ -288,18 +287,18 @@ function copy_artefacts {
     exclude_rules="--exclude ${file} ${exclude_rules}"
   done
 
-  rsync -av "${exclude_rules} * ${ATL_JIRA_SHARED_HOME}"
+  rsync -av ${exclude_rules} * ${ATL_JIRA_SHARED_HOME}
 }
 
 function hydrate_db_dump {
   export USER_ENCRYPTION_METHOD="atlassian-security"
-  export USER_PASSWORD=$(run_password_generator ${USER_CREDENTIAL})
-  export USER_FIRSTNAME=$(echo ${USER_FULLNAME} | cut -d ' ' -f 1)
-  export USER_LASTNAME=$(echo ${USER_FULLNAME} | cut -d ' ' -f 2-)
-  export USER_FIRSTNAME_LOWERCASE=$(echo ${USER_FULLNAME_LOWERCASE} | cut -d ' ' -f 1)
-  export USER_LASTNAME_LOWERCASE=$(echo ${USER_FULLNAME_LOWERCASE} | cut -d ' ' -f 2-)
-  export SERVER_ID=$(generate_server_id)
-  export DB_USER=$(echo ${DB_USER} | cut -d '@' -f 1)
+  export USER_PASSWORD=`run_password_generator ${USER_CREDENTIAL}`
+  export USER_FIRSTNAME=`echo ${USER_FULLNAME} | cut -d ' ' -f 1`
+  export USER_LASTNAME=`echo ${USER_FULLNAME} | cut -d ' ' -f 2-`
+  export USER_FIRSTNAME_LOWERCASE=`echo ${USER_FULLNAME_LOWERCASE} | cut -d ' ' -f 1`
+  export USER_LASTNAME_LOWERCASE=`echo ${USER_FULLNAME_LOWERCASE} | cut -d ' ' -f 2-`
+  export SERVER_ID=`generate_server_id`
+  export DB_USER=`echo ${DB_USER} | cut -d '@' -f 1`
 
   log "Generated server id [${SERVER_ID}]"
 
@@ -308,7 +307,7 @@ function hydrate_db_dump {
   local template_file=$(ls -C1 *db.sql.template)
   local output_file=`echo "${template_file}" | sed 's/\.template$//'`
 
-  cat "${template_file}" | python hydrate_jira_config.py > "${output_file}"
+  cat ${template_file} | python hydrate_jira_config.py > ${output_file}
   log "Hydrated '${template_file}' into '${output_file}'"
 }
 
@@ -324,18 +323,18 @@ function get_trusted_dbhost {
 }
 
 function apply_database_dump {
-  atl_log "java -jar liquibase-core-3.5.3.jar \
-    --classpath=${DB_DRIVER_JAR} \
-    --driver=${DB_DRIVER_CLASS} \
-    --url=${DB_JDBCURL} \
-    --username=${DB_USER_LIQUIBASE} \
-    --password=${DB_PASSWORD} \
-    --logLevel=info \
-    --changeLogFile=databaseChangeLog.xml \
-    update"
   java -jar liquibase-core-3.5.3.jar \
     --classpath="${DB_DRIVER_JAR}" \
-    --driver="${DB_DRIVER_CLASS}" \
+    --driver=${DB_DRIVER_CLASS} \
+    --url="${DB_JDBCURL}" \
+    --username="${DB_USER_LIQUIBASE}" \
+    --password="${DB_PASSWORD}" \
+    --logLevel=info \
+    --changeLogFile=databaseChangeLog.xml \
+    update
+  atl_log java -jar liquibase-core-3.5.3.jar \
+    --classpath="${DB_DRIVER_JAR}" \
+    --driver=${DB_DRIVER_CLASS} \
     --url="${DB_JDBCURL}" \
     --username="${DB_USER_LIQUIBASE}" \
     --password="${DB_PASSWORD}" \
@@ -403,7 +402,7 @@ function restore_installer {
   local installer_target="${ATL_TEMP_DIR}/installer"
 
   if [[ -f ${installer_path} ]]; then
-    cp "${installer_path}" "${installer_target}"
+    cp ${installer_path} "${installer_target}"
     chmod 0700 "${installer_target}"
   else
     local msg="${ATL_JIRA_PRODUCT} installer ${jira_installer} has been requested but unable to locate it in ${ATL_JIRA_SHARED_HOME}"
@@ -412,7 +411,7 @@ function restore_installer {
     ATL_JIRA_PRODUCT_VERSION=$jira_version
     download_installer
     preserve_installer
-    cp "${installer_path}" "${installer_target}"
+    cp ${installer_path} "${installer_target}"
     chmod 0700 "${installer_target}"
     #error "${msg}"
   fi
@@ -423,7 +422,7 @@ function restore_installer {
 function ensure_readable {
   local path=$1
 
-  local timeout=60
+  local timeout=300
   local interval=10
 
   local start=$(date +%s)
@@ -504,7 +503,7 @@ function perform_install {
 function install_jdbc_drivers {
   local install_location="${1:-${ATL_JIRA_INSTALL_DIR}/lib}"
 
-  for jarURL in $ATL_MSSQL_DRIVER_URL
+  for jarURL in $(echo $ATL_MSSQL_DRIVER_URL $ATL_POSTGRES_DRIVER_URL)
   do
      atl_log install_jdbc_drivers "Downloading JDBC driver from ${jarURL}"
      curl -O "${jarURL}"
