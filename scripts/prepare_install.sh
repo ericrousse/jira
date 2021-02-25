@@ -202,7 +202,7 @@ function mount_share {
   fi
 
   [ -d "${ATL_JIRA_SHARED_HOME}" ] || mkdir -p "${ATL_JIRA_SHARED_HOME}"
-  mount -t cifs "${mount_share} ${ATL_JIRA_SHARED_HOME} -o ${mount_options}"
+  mount -t cifs "${mount_share}" "${ATL_JIRA_SHARED_HOME}" -o "${mount_options}"
 
   if [ ! $(cat /etc/mtab | grep -o "${ATL_JIRA_SHARED_HOME}") ];
   then
