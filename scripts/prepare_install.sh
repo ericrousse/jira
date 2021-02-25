@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -x
+echo hello
 
 ATL_GENERATE_PASSWORD_SCRIPT="print(com.atlassian.security.password.DefaultPasswordEncoder.getDefaultInstance().encodePassword(arguments[0]));"
 ATL_GENERATE_SERVER_ID_SCRIPT="print((new com.atlassian.license.DefaultSIDManager()).generateSID());"
@@ -270,10 +271,10 @@ function hydrate_shared_config {
 
   local template_files=(dbconfig.xml.template server.xml.template ApplicationInsights.xml.template jira-collectd.conf.template databaseChangeLog.xml.template)
   local output_file=""
-  for template_file in "${template_files[@]}";
+  for template_file in ${template_files[@]};
   do
-    output_file=$(echo "${template_file}" | sed 's/\.template$//')
-    cat "${template_file}" | python hydrate_jira_config.py > "${output_file}"
+    output_file=`echo "${template_file}" | sed 's/\.template$//'`
+    cat ${template_file} | python hydrate_jira_config.py > ${output_file}
     atl_log hdyrate_shared_config "Hydrated '${template_file}' into '${output_file}'"
   done
 }
